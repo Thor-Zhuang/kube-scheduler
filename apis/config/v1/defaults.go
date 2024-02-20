@@ -27,6 +27,41 @@ import (
 )
 
 var (
+	defaultPermitWaitingTimeSeconds int64 = 60
+	defaultPodGroupBackoffSeconds   int64 = 0
+
+	defaultNodeResourcesAllocatableMode = Least
+
+	// defaultResourcesToWeightMap is used to set the default resourceToWeight map for CPU and memory
+	// used by the NodeResourcesAllocatable scoring plugin.
+	// The base unit for CPU is millicore, while the base using for memory is a byte.
+	// The default CPU weight is 1<<20 and default memory weight is 1. That means a millicore
+	// has a weighted score equivalent to 1 MiB.
+	defaultNodeResourcesAllocatableResourcesToWeightMap = []schedulerconfigv1.ResourceSpec{
+		{Name: "cpu", Weight: 1 << 20}, {Name: "memory", Weight: 1},
+	}
+
+	// Defaults for TargetLoadPacking plugin
+
+	// Default 1 core CPU usage for containers without requests and limits i.e. Best Effort QoS.
+	DefaultRequestsMilliCores int64 = 1000
+	// DefaultRequestsMultiplier for containers without limits predicted as 1.5*requests i.e. Burstable QoS class
+	DefaultRequestsMultiplier = "1.5"
+	// DefaultTargetUtilizationPercent Recommended to keep -10 than desired limit.
+	DefaultTargetUtilizationPercent int64 = 40
+
+	// Defaults for LoadVariationRiskBalancing plugin
+
+	// Risk is usually calculated as average (aka. mu) plus standard deviation (aka. sigma).
+	// In order to allow customization in the calculation of risk, two parameters are provided:
+	// Margin and Sensitivity. Margin is a multiplier of sigma, and Sensitivity is a root power of sigma.
+	// For example, Margin=3 and Sensitivity=2 leads to a risk evaluated as: mu + 3 sqrt(sigma).
+	// The default value for both parameters is 1, leading to: mu + sigma.
+	// DefaultSafeVarianceMargin is one
+	DefaultSafeVarianceMargin = 1.0
+	// DefaultSafeVarianceSensitivity is one
+	DefaultSafeVarianceSensitivity = 1.0
+
 	// Defaults for LowRiskOverCommitment plugin
 
 	// The default number of windows over which usage data metrics are smoothed.
@@ -56,18 +91,69 @@ var (
 
 	defaultInformerMode = CacheInformerDedicated
 
+	// Defaults for NetworkOverhead
+	// DefaultWeightsName contains the default costs to be used by networkAware plugins
+	DefaultWeightsName = "UserDefined"
+	// DefaultNetworkTopologyName contains the networkTopology CR name to be used by networkAware plugins
+	DefaultNetworkTopologyName = "nt-default"
+)
 
+// SetDefaults_CoschedulingArgs sets the default parameters for Coscheduling plugin.
+func SetDefaults_CoschedulingArgs(obj *CoschedulingArgs) {
+	if obj.PermitWaitingTimeSeconds == nil {
+		obj.PermitWaitingTimeSeconds = &defaultPermitWaitingTimeSeconds
+	}
+	if obj.PodGroupBackoffSeconds == nil {
+		obj.PodGroupBackoffSeconds = &defaultPodGroupBackoffSeconds
+	}
+}
+
+// SetDefaults_NodeResourcesAllocatableArgs sets the defaults parameters for NodeResourceAllocatable.
+func SetDefaults_NodeResourcesAllocatableArgs(obj *NodeResourcesAllocatableArgs) {
+	if len(obj.Resources) == 0 {
+		obj.Resources = defaultNodeResourcesAllocatableResourcesToWeightMap
+	}
+
+	if obj.Mode == "" {
+		obj.Mode = defaultNodeResourcesAllocatableMode
+	}
+}
 
 // SetDefaultTrimaranSpec sets the default parameters for common Trimaran plugins
 func SetDefaultTrimaranSpec(args *TrimaranSpec) {
 	if args.WatcherAddress == nil && args.MetricProvider.Type == "" {
 		args.MetricProvider.Type = DefaultMetricProviderType
 	}
-	if args.MetricProvider.Type == Prometheus && args. .InsecureSkipVerify == nil {
+	if args.MetricProvider.Type == Prometheus && args.MetricProvider.InsecureSkipVerify == nil {
 		args.MetricProvider.InsecureSkipVerify = &DefaultInsecureSkipVerify
 	}
 }
 
+// SetDefaults_TargetLoadPackingArgs sets the default parameters for TargetLoadPacking plugin
+func SetDefaults_TargetLoadPackingArgs(args *TargetLoadPackingArgs) {
+	SetDefaultTrimaranSpec(&args.TrimaranSpec)
+	if args.DefaultRequests == nil {
+		args.DefaultRequests = v1.ResourceList{v1.ResourceCPU: resource.MustParse(
+			strconv.FormatInt(DefaultRequestsMilliCores, 10) + "m")}
+	}
+	if args.DefaultRequestsMultiplier == nil {
+		args.DefaultRequestsMultiplier = &DefaultRequestsMultiplier
+	}
+	if args.TargetUtilization == nil || *args.TargetUtilization <= 0 {
+		args.TargetUtilization = &DefaultTargetUtilizationPercent
+	}
+}
+
+// SetDefaults_LoadVariationRiskBalancingArgs sets the default parameters for LoadVariationRiskBalancing plugin
+func SetDefaults_LoadVariationRiskBalancingArgs(args *LoadVariationRiskBalancingArgs) {
+	SetDefaultTrimaranSpec(&args.TrimaranSpec)
+	if args.SafeVarianceMargin == nil || *args.SafeVarianceMargin < 0 {
+		args.SafeVarianceMargin = &DefaultSafeVarianceMargin
+	}
+	if args.SafeVarianceSensitivity == nil || *args.SafeVarianceSensitivity < 0 {
+		args.SafeVarianceSensitivity = &DefaultSafeVarianceSensitivity
+	}
+}
 
 // SetDefaults_LowRiskOverCommitmentArgs sets the default parameters for LowRiskOverCommitment plugin
 func SetDefaults_LowRiskOverCommitmentArgs(args *LowRiskOverCommitmentArgs) {
@@ -83,5 +169,67 @@ func SetDefaults_LowRiskOverCommitmentArgs(args *LowRiskOverCommitmentArgs) {
 				(args.RiskLimitWeights)[r] = DefaultRiskLimitWeight
 			}
 		}
+	}
+}
+
+// SetDefaults_NodeResourceTopologyMatchArgs sets the default parameters for NodeResourceTopologyMatch plugin.
+func SetDefaults_NodeResourceTopologyMatchArgs(obj *NodeResourceTopologyMatchArgs) {
+	if obj.ScoringStrategy == nil {
+		obj.ScoringStrategy = &ScoringStrategy{
+			Type:      LeastAllocated,
+			Resources: defaultResourceSpec,
+		}
+	}
+
+	if len(obj.ScoringStrategy.Resources) == 0 {
+		// If no resources specified, use the default set.
+		obj.ScoringStrategy.Resources = append(obj.ScoringStrategy.Resources, defaultResourceSpec...)
+	}
+
+	for i := range obj.ScoringStrategy.Resources {
+		if obj.ScoringStrategy.Resources[i].Weight == 0 {
+			obj.ScoringStrategy.Resources[i].Weight = 1
+		}
+	}
+
+	if obj.Cache == nil {
+		obj.Cache = &NodeResourceTopologyCache{}
+	}
+	if obj.Cache.ForeignPodsDetect == nil {
+		obj.Cache.ForeignPodsDetect = &defaultForeignPodsDetect
+
+	}
+	if obj.Cache.ResyncMethod == nil {
+		obj.Cache.ResyncMethod = &defaultResyncMethod
+	}
+	if obj.Cache.InformerMode == nil {
+		obj.Cache.InformerMode = &defaultInformerMode
+	}
+}
+
+// SetDefaults_PreemptionTolerationArgs reuses SetDefaults_DefaultPreemptionArgs
+func SetDefaults_PreemptionTolerationArgs(obj *PreemptionTolerationArgs) {
+	k8sschedulerconfigv1.SetDefaults_DefaultPreemptionArgs((*schedulerconfigv1.DefaultPreemptionArgs)(obj))
+}
+
+// SetDefaults_TopologicalSortArgs sets the default parameters for TopologicalSortArgs plugin.
+func SetDefaults_TopologicalSortArgs(obj *TopologicalSortArgs) {
+	if len(obj.Namespaces) == 0 {
+		obj.Namespaces = []string{metav1.NamespaceDefault}
+	}
+}
+
+// SetDefaults_NetworkOverheadArgs sets the default parameters for NetworkMinCostArgs plugin.
+func SetDefaults_NetworkOverheadArgs(obj *NetworkOverheadArgs) {
+	if len(obj.Namespaces) == 0 {
+		obj.Namespaces = []string{metav1.NamespaceDefault}
+	}
+
+	if obj.WeightsName == nil {
+		obj.WeightsName = &DefaultWeightsName
+	}
+
+	if obj.NetworkTopologyName == nil {
+		obj.NetworkTopologyName = &DefaultNetworkTopologyName
 	}
 }

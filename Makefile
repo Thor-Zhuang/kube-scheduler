@@ -13,7 +13,8 @@
 # limitations under the License.
 
 ARCHS = amd64 arm64
-COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z)
+#COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z)
+COMMONENVVAR=GOOS=windos
 BUILDENVVAR=CGO_ENABLED=0
 
 LOCAL_REGISTRY=localhost:5000/scheduler-plugins
@@ -84,7 +85,7 @@ release-image.amd64: clean
 .PHONY: release-image.arm64v8
 release-image.arm64v8: clean
 	docker build -f ./build/scheduler/Dockerfile --build-arg ARCH="arm64v8" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(RELEASE_REGISTRY)/$(RELEASE_IMAGE)-arm64 .
-	#docker build -f ./build/controller/Dockerfile --build-arg ARCH="arm64v8" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-arm64 .
+	docker build -f ./build/controller/Dockerfile --build-arg ARCH="arm64v8" -t $(RELEASE_REGISTRY)/$(RELEASE_CONTROLLER_IMAGE)-arm64 .
 
 .PHONY: push-release-images
 push-release-images: release-image.amd64 release-image.arm64v8

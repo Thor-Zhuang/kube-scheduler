@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/scheduler-plugins/apis/config"
 	"sigs.k8s.io/scheduler-plugins/apis/config/v1"
 	//"sigs.k8s.io/scheduler-plugins/apis/config/v1beta3"
-	//configv1beta1 "sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta1"
 )
 
 var (
