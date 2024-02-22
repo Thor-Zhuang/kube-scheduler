@@ -3,28 +3,22 @@ module sigs.k8s.io/scheduler-plugins
 go 1.15
 
 require (
-	github.com/google/go-cmp v0.5.5
-	github.com/google/uuid v1.1.2
-	github.com/k8stopologyawareschedwg/noderesourcetopology-api v0.0.8
-	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/paypal/load-watcher v0.2.3
-	github.com/spf13/pflag v1.0.5
+	github.com/json-iterator/go v1.1.11 // indirect
+	github.com/paypal/load-watcher v0.2.0
+	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40 // indirect
 	gonum.org/v1/gonum v0.6.2
+	google.golang.org/protobuf v1.26.0-rc.1 // indirect
 	k8s.io/api v0.20.8
-	k8s.io/apiextensions-apiserver v0.0.0
-	k8s.io/apimachinery v0.22.3
-	k8s.io/apiserver v0.20.8
-	k8s.io/client-go v0.22.3
+	k8s.io/apimachinery v0.20.8
+	k8s.io/client-go v0.20.8
 	k8s.io/code-generator v0.20.8
 	k8s.io/component-base v0.20.8
-	k8s.io/component-helpers v0.20.8
 	k8s.io/klog/v2 v2.9.0
-	k8s.io/kube-aggregator v0.0.0
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	k8s.io/kube-scheduler v0.20.8
 	k8s.io/kubernetes v1.20.8
-	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 )
 
 replace (

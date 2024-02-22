@@ -34,7 +34,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 
 	pluginConfig "sigs.k8s.io/scheduler-plugins/apis/config"
-	pluginv1 "sigs.k8s.io/scheduler-plugins/apis/config/v1"
+	pluginv1 "sigs.k8s.io/scheduler-plugins/apis/config/v1beta1"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran"
 )
 

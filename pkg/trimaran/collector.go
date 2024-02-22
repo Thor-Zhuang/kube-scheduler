@@ -64,7 +64,7 @@ func NewCollector(trimaranSpec *pluginConfig.TrimaranSpec) (*Collector, error) {
 			Name:               string(trimaranSpec.MetricProvider.Type),
 			Address:            trimaranSpec.MetricProvider.Address,
 			AuthToken:          trimaranSpec.MetricProvider.Token,
-			InsecureSkipVerify: trimaranSpec.MetricProvider.InsecureSkipVerify,
+			// InsecureSkipVerify: trimaranSpec.MetricProvider.InsecureSkipVerify,
 		}
 		client, _ = loadwatcherapi.NewLibraryClient(opts)
 	}
